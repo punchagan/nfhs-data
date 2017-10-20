@@ -7,12 +7,41 @@ import dash_html_components as html
 import pandas
 import plotly.graph_objs as go
 
-nfhs_state_wise = pandas.read_csv('nfhs_state-wise.csv')
+
+NAN_VALUES = {'', '*', 'na'}
+
+
+def to_float(x):
+    x_ = x.replace(',', '').strip()
+    return float(x_) if x_ not in NAN_VALUES else pandas.np.nan
+
+nfhs_state_wise = pandas.read_csv(
+    'nfhs_state-wise.csv',
+    converters={'rural': to_float, 'urban': to_float, 'total': to_float}
+)
 categories = set(nfhs_state_wise['indicator_category'].unique())
 # FIXME: Clean up data directly?
 categories.remove(pandas.np.nan)
 categories.remove('#VALUE!')
 categories = sorted(categories)
+
+indicators = set(nfhs_state_wise['indicator'].unique())
+# FIXME: Clean up data directly?
+indicators.remove('#VALUE!')
+indicators.remove(pandas.np.nan)
+indicators = sorted(indicators)
+
+
+def get_category(data, indicator):
+    categories = data[data['indicator'] == indicator]['indicator_category']
+    return categories.unique()[0]
+
+i_c_map = {
+    indicator: get_category(nfhs_state_wise, indicator)
+    for indicator in indicators
+}
+indicators = sorted(indicators, key=lambda x: i_c_map[x])
+
 MARKERS = ['circle', 'square', 'diamond']
 
 
