@@ -54,17 +54,16 @@ graphs = ['Single Indicator', 'Correlations']
 app.layout = html.Div(children=[
     html.H1(children=title),
     dcc.Dropdown(
-        id='category-dropdown',
-        options=[
-            {'label': category, 'value': category}
-            for category in categories
-        ],
-        value=categories[0]
-    ),
-    dcc.Dropdown(
         id='indicator-dropdown',
-        options=[],
-        value=None,
+        options=[
+            {
+                'label': '%s :: %s' % (i_c_map[indicator], indicator),
+                'value': indicator
+            }
+            for indicator in indicators
+        ],
+        value=indicators[0],
+        multi=True,
     ),
     dcc.Graph(id='nfhs-graph')
 ])
@@ -83,41 +82,36 @@ def category_indicators(data, category=None):
     return sorted(set(category_data['indicator']))
 
 
-@app.callback(Output('indicator-dropdown', 'options'),
-              [Input('category-dropdown', 'value')])
-def update_indicator_options(category):
-    indicators = category_indicators(nfhs_state_wise, category)
-    return [
-        {'label': indicator, 'value': indicator}
-        for indicator in indicators
-    ]
-
-
-@app.callback(Output('indicator-dropdown', 'value'),
-              [Input('category-dropdown', 'value')])
-def update_indicator_value(category):
-    indicators = category_indicators(nfhs_state_wise, category)
-    return indicators[0]
-
-
 @app.callback(Output('nfhs-graph', 'figure'),
-              [Input('category-dropdown', 'value'),
-               Input('indicator-dropdown', 'value')])
-def update_graph(category, value, column='total'):
-    data = nfhs_state_wise[
-        (nfhs_state_wise['indicator_category'] == category) &
-        (nfhs_state_wise['indicator'] == value)
-    ]
-    return scatter(data)
+              [Input('indicator-dropdown', 'value')])
+def update_graph(indicators):
+    if isinstance(indicators, str):
+        indicator = indicators
+        data = nfhs_state_wise[nfhs_state_wise['indicator'] == indicator]
+        figure = single_scatter(data)
+
+    elif len(indicators) == 1:
+        indicator = indicators[0]
+        data = nfhs_state_wise[nfhs_state_wise['indicator'] == indicator]
+        figure = single_scatter(data)
+
+    elif len(indicators) >= 2:
+        x, y = indicators[:2]
+        figure = correlation_scatter(nfhs_state_wise, x, y)
+
+    else:
+        figure = None
+
+    return figure
 
 
-def scatter(data):
+def single_scatter(data):
     scatter_data = [
         {
             'x': data['state'],
             'y': data[column],
             'name': column.capitalize(),
-            'mode': 'markers',
+            'mode': 'markers+lines',
             'marker': {'symbol': MARKERS[i % len(MARKERS)], 'size': 8},
         }
         for i, column in enumerate(('rural', 'urban', 'total'))
@@ -134,6 +128,39 @@ def scatter(data):
             },
             'yaxis': {
                 'title': 'Value',
+            },
+        }
+    }
+    return figure
+
+
+def correlation_scatter(data, indicator_x, indicator_y):
+    X = nfhs_state_wise[nfhs_state_wise['indicator'] == indicator_x]
+    Y = nfhs_state_wise[nfhs_state_wise['indicator'] == indicator_y]
+
+    scatter_data = [
+        {
+            'x': X[column],
+            'y': Y[column],
+            'text': X['state'],
+            'name': column.capitalize(),
+            'mode': 'markers',
+            'marker': {'symbol': MARKERS[i % len(MARKERS)], 'size': 8},
+        }
+        for i, column in enumerate(('rural', 'urban', 'total'))
+    ]
+
+    figure = {
+        'data': [go.Scatter(d) for d in scatter_data],
+        'layout': {
+            'height': 800,
+            'width': 900,
+            'hovermode': 'closest',
+            'xaxis': {
+                'title': indicator_x,
+            },
+            'yaxis': {
+                'title': indicator_y,
             },
         }
     }
