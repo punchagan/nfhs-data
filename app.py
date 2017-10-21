@@ -80,7 +80,7 @@ def update_indicator_graph(level, ids):
 
     elif len(ids) >= 2:
         x, y = ids[:2]
-        figure = binary_correlation_scatter(data, x, y)
+        figure = binary_correlation_scatter(data, x, y, level)
 
     else:
         figure = None

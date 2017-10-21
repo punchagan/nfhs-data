@@ -7,16 +7,20 @@ import plotly.graph_objs as go
 MARKERS = ['circle', 'square', 'diamond']
 
 
-def binary_correlation_scatter(data, indicator_x, indicator_y):
+def binary_correlation_scatter(data, indicator_x, indicator_y, level='state'):
     """Scatter plot to view correlation between two indicators."""
     X = data[data['indicator_id'] == indicator_x]
     Y = data[data['indicator_id'] == indicator_y]
+    text = (
+        X[level] if level == 'state' else
+        X.apply(lambda x: '{district}-{state}'.format(**x), axis=1)
+    )
 
     scatter_data = [
         {
             'x': X[column],
             'y': Y[column],
-            'text': X['state'],
+            'text': text,
             'name': column.capitalize(),
             'mode': 'markers',
             'marker': {'symbol': MARKERS[i % len(MARKERS)], 'size': 8},
