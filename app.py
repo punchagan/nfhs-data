@@ -17,9 +17,9 @@ DATA = {
     'state': {
         'data': read_nfhs_csv('nfhs_state-wise.csv')
     },
-    # 'district': {
-    #     'data': read_nfhs_csv('nfhs_district-wise.csv')
-    # }
+    'district': {
+        'data': read_nfhs_csv('nfhs_district-wise.csv')
+    }
 }
 TITLE = 'NFHS-4 EDA'
 LEVELS = ['state', 'district']
@@ -93,6 +93,9 @@ def update_indicator_graph(level, ids):
                Input('indicator-dropdown', 'value')])
 def update_correlations_graph(level, ids):
     data = DATA[level]['data']
+    if 'indicators' not in DATA[level]:
+        return None
+
     indicators = DATA[level]['indicators']
     if len(ids) == 1:
         indicator_id = ids[0]

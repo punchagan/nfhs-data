@@ -31,10 +31,10 @@ def binary_correlation_scatter(data, indicator_x, indicator_y):
             'width': 900,
             'hovermode': 'closest',
             'xaxis': {
-                'title': '{indicator_category} :: {indicator}'.format(**X.iloc[0]),
+                'title': '{indicator_category} :: {indicator_name}'.format(**X.iloc[0]),
             },
             'yaxis': {
-                'title': '{indicator_category} :: {indicator}'.format(**Y.iloc[0]),
+                'title': '{indicator_category} :: {indicator_name}'.format(**Y.iloc[0]),
             },
         }
     }
