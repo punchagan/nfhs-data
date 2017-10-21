@@ -5,7 +5,7 @@
 
 import pandas
 
-NAN_VALUES = {'', '*', 'na'}
+NAN_VALUES = {'', '*', 'na', '#VALUE!'}
 
 
 def compute_indicator_correlations(data, indicator, indicators):
@@ -22,13 +22,16 @@ def compute_indicator_correlations(data, indicator, indicators):
 def get_indicators(data):
     indicators = set(
         data.apply(
-            lambda x: (x.indicator_id, x.indicator_category, x.indicator),
+            lambda x: (x.indicator_id, x.indicator_category, x.indicator_name),
             axis=1
         ).unique()
     )
     # FIXME: Clean up data directly?
-    indicators.remove(('#VALUE!', '#VALUE!', '#VALUE!'))
-    indicators.remove(('23', pandas.np.nan, pandas.np.nan))
+    try:
+        indicators.remove(('#VALUE!', '#VALUE!', '#VALUE!'))
+        indicators.remove(('23', pandas.np.nan, pandas.np.nan))
+    except KeyError:
+        pass
     indicators = sorted(indicators, key=lambda x: int(x[0]))
     return indicators
 
@@ -52,10 +55,18 @@ def get_indicator_values(data, indicator, columns=None):
 
 def read_nfhs_csv(path):
     """Read NFHS data csv from the given path."""
-    return pandas.read_csv(
+    data = pandas.read_csv(
         path,
-        converters={'rural': to_float, 'urban': to_float, 'total': to_float}
+        dtype={'indicator_id': str, 'indicator_number': str},
+        converters={'rural': to_float, 'urban': to_float, 'total': to_float},
+        encoding='latin-1',
     )
+    data.columns = data.columns.map(
+        lambda x: 'indicator_id' if x == 'indicator_number' else x
+    ).map(
+        lambda x: 'indicator_name' if x == 'indicator' else x
+    )
+    return data
 
 
 def to_float(x):
