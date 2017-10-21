@@ -19,29 +19,18 @@ nfhs_state_wise = pandas.read_csv(
     'nfhs_state-wise.csv',
     converters={'rural': to_float, 'urban': to_float, 'total': to_float}
 )
-categories = set(nfhs_state_wise['indicator_category'].unique())
+
+indicators = set(
+    nfhs_state_wise.apply(
+        lambda x: (x.indicator_id, x.indicator_category, x.indicator),
+        axis=1
+    ).unique()
+)
 # FIXME: Clean up data directly?
-categories.remove(pandas.np.nan)
-categories.remove('#VALUE!')
-categories = sorted(categories)
-
-indicators = set(nfhs_state_wise['indicator'].unique())
-# FIXME: Clean up data directly?
-indicators.remove('#VALUE!')
-indicators.remove(pandas.np.nan)
-indicators = sorted(indicators)
-
-
-def get_category(data, indicator):
-    categories = data[data['indicator'] == indicator]['indicator_category']
-    return categories.unique()[0]
-
-
-i_c_map = {
-    indicator: get_category(nfhs_state_wise, indicator)
-    for indicator in indicators
-}
-indicators = sorted(indicators, key=lambda x: i_c_map[x])
+indicators.remove(('#VALUE!', '#VALUE!', '#VALUE!'))
+indicators.remove(('23', pandas.np.nan, pandas.np.nan))
+indicators = sorted(indicators, key=lambda x: int(x[0]))
+indicator_names = ['{} :: {}'.format(*i[1:]) for i in indicators]
 
 MARKERS = ['circle', 'square', 'diamond']
 
@@ -52,23 +41,19 @@ app.title = title
 
 
 def get_indicator_values(data, indicator):
-    X = data[data['indicator'] == indicator]
+    indicator_id, _, _ = indicator
+    X = data[data['indicator_id'] == indicator_id]
     X_ = X[['rural', 'urban', 'total']]
     X_.index = X['state']
     return X_[:-1]  # FIXME: WB data appears twice
 
 
-def compute_indicator_correlations(data, indicators):
+def compute_correlations(data, indicators):
     rural, urban, total = {}, {}, {}
     I = indicators
     for i, indicator in enumerate(I):
         print(i)
-        X = get_indicator_values(data, indicator)
-        correlations = [
-            X.corrwith(get_indicator_values(data, other))
-            for other in I
-        ]
-        correlations = pandas.DataFrame(correlations, index=I)
+        correlations = compute_indicator_correlations(data, indicator, I)
         rural[indicator] = correlations['rural']
         urban[indicator] = correlations['urban']
         total[indicator] = correlations['total']
@@ -79,22 +64,41 @@ def compute_indicator_correlations(data, indicators):
     return rural, urban, total
 
 
-RURAL, URBAN, TOTAL = compute_indicator_correlations(
-    nfhs_state_wise, indicators
-)
+def compute_indicator_correlations(data, indicator, indicators):
+    X = get_indicator_values(data, indicator)
+    correlations = [
+        X.corrwith(get_indicator_values(data, other))
+        for other in indicators
+    ]
+    correlations = pandas.DataFrame(correlations, index=indicator_names)
+    return correlations
 
 
-def correlation_heatmap(data):
+def single_correlation_scatter(data, indicator):
+    scatter_data = [
+        {
+            'x': data[column].index,
+            'y': data[column],
+            'name': column.capitalize(),
+            'mode': 'markers+lines',
+            'marker': {'symbol': MARKERS[i % len(MARKERS)], 'size': 8},
+        }
+        for i, column in enumerate(('rural', 'urban', 'total'))
+    ]
+
     figure = {
-        'data': [
-            go.Heatmap(z=data.values,
-                       x=data.columns,
-                       y=data.index)
-        ],
+        'data': [go.Scatter(d) for d in scatter_data],
         'layout': {
+            'title': '{}::{}'.format(*indicator[1:]),
             'height': 800,
-            'width': 900,
+            'width': 1900,
             'hovermode': 'closest',
+            'xaxis': {
+                'title': 'Indicators',
+            },
+            'yaxis': {
+                'title': 'Correlation',
+            },
         }
     }
     return figure
@@ -130,8 +134,8 @@ def single_scatter(data):
 
 
 def correlation_scatter(data, indicator_x, indicator_y):
-    X = nfhs_state_wise[nfhs_state_wise['indicator'] == indicator_x]
-    Y = nfhs_state_wise[nfhs_state_wise['indicator'] == indicator_y]
+    X = nfhs_state_wise[nfhs_state_wise['indicator_id'] == indicator_x]
+    Y = nfhs_state_wise[nfhs_state_wise['indicator_id'] == indicator_y]
 
     scatter_data = [
         {
@@ -152,10 +156,10 @@ def correlation_scatter(data, indicator_x, indicator_y):
             'width': 900,
             'hovermode': 'closest',
             'xaxis': {
-                'title': indicator_x,
+                'title': '{indicator_category} :: {indicator}'.format(**X.iloc[0]),
             },
             'yaxis': {
-                'title': indicator_y,
+                'title': '{indicator_category} :: {indicator}'.format(**Y.iloc[0]),
             },
         }
     }
@@ -168,18 +172,16 @@ app.layout = html.Div(children=[
         id='indicator-dropdown',
         options=[
             {
-                'label': '%s :: %s' % (i_c_map[indicator], indicator),
-                'value': indicator
+                'label': indicator_names[i],
+                'value': indicator_id,
             }
-            for indicator in indicators
+            for i, (indicator_id, _, _) in enumerate(indicators)
         ],
-        value=indicators[0],
+        value=[indicators[0][0]],
         multi=True,
     ),
     dcc.Graph(id='nfhs-graph'),
-    dcc.Graph(id='nfhs-correlations-rural', figure=correlation_heatmap(RURAL)),
-    dcc.Graph(id='nfhs-correlations-urban', figure=correlation_heatmap(URBAN)),
-    dcc.Graph(id='nfhs-correlations-total', figure=correlation_heatmap(TOTAL)),
+    dcc.Graph(id='nfhs-correlations-graph'),
 ])
 
 app.css.append_css({
@@ -187,36 +189,42 @@ app.css.append_css({
 })
 
 
-def category_indicators(data, category=None):
-    category_data = (
-        data[data['indicator_category'] == category]
-        if category is not None else data
-
-    )
-    return sorted(set(category_data['indicator']))
-
-
 @app.callback(Output('nfhs-graph', 'figure'),
               [Input('indicator-dropdown', 'value')])
-def update_graph(indicators):
-    if isinstance(indicators, str):
-        indicator = indicators
-        data = nfhs_state_wise[nfhs_state_wise['indicator'] == indicator]
+def update_indicator_graph(ids):
+    if len(ids) == 1:
+        indicator_id = ids[0]
+        data = nfhs_state_wise[nfhs_state_wise['indicator_id'] == indicator_id]
         figure = single_scatter(data)
 
-    elif len(indicators) == 1:
-        indicator = indicators[0]
-        data = nfhs_state_wise[nfhs_state_wise['indicator'] == indicator]
-        figure = single_scatter(data)
-
-    elif len(indicators) >= 2:
-        x, y = indicators[:2]
+    elif len(ids) >= 2:
+        x, y = ids[:2]
         figure = correlation_scatter(nfhs_state_wise, x, y)
 
     else:
         figure = None
 
     return figure
+
+
+@app.callback(Output('nfhs-correlations-graph', 'figure'),
+              [Input('indicator-dropdown', 'value')])
+def update_correlations_graph(ids):
+    if len(ids) == 1:
+        indicator_id = ids[0]
+
+    else:
+        indicator_id = None
+
+    if indicator_id is None:
+        return None
+
+    indicator = [i for i in indicators if i[0] == indicator_id][0]
+
+    data = compute_indicator_correlations(
+        nfhs_state_wise, indicator, indicators
+    )
+    return single_correlation_scatter(data, indicator)
 
 
 if __name__ == '__main__':
