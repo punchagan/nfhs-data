@@ -107,7 +107,7 @@ def update_correlations_graph(level, ids):
         return None
 
     indicator = [i for i in indicators if i[0] == indicator_id][0]
-    correlations = compute_indicator_correlations(data, indicator, indicators)
+    correlations = compute_indicator_correlations(data, indicator, level, indicators)
     return correlation_scatter(correlations, indicator)
 
 if __name__ == '__main__':
