@@ -19,6 +19,20 @@ def compute_indicator_correlations(data, indicator, indicators):
     return correlations
 
 
+def get_indicators(data):
+    indicators = set(
+        data.apply(
+            lambda x: (x.indicator_id, x.indicator_category, x.indicator),
+            axis=1
+        ).unique()
+    )
+    # FIXME: Clean up data directly?
+    indicators.remove(('#VALUE!', '#VALUE!', '#VALUE!'))
+    indicators.remove(('23', pandas.np.nan, pandas.np.nan))
+    indicators = sorted(indicators, key=lambda x: int(x[0]))
+    return indicators
+
+
 def get_indicator_names(indicators):
     return ['{} :: {}'.format(*i[1:]) for i in indicators]
 
@@ -34,6 +48,14 @@ def get_indicator_values(data, indicator, columns=None):
     X_.index = X['state']
     # NOTE: WB data appears twice
     return X_[:-1]
+
+
+def read_nfhs_csv(path):
+    """Read NFHS data csv from the given path."""
+    return pandas.read_csv(
+        path,
+        converters={'rural': to_float, 'urban': to_float, 'total': to_float}
+    )
 
 
 def to_float(x):

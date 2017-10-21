@@ -72,11 +72,13 @@ def correlation_scatter(data, indicator):
     return figure
 
 
-def single_scatter(data):
+def single_scatter(data, indicator_id):
+    """Scatter plot of a single indicator data."""
+    indicator_data = data[data['indicator_id'] == indicator_id]
     scatter_data = [
         {
-            'x': data['state'],
-            'y': data[column],
+            'x': indicator_data['state'],
+            'y': indicator_data[column],
             'name': column.capitalize(),
             'mode': 'markers+lines',
             'marker': {'symbol': MARKERS[i % len(MARKERS)], 'size': 8},
