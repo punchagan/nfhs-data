@@ -107,7 +107,10 @@ def update_state_options(level):
                Input('indicator-dropdown', 'value')])
 def update_indicator_graph(level, state, ids):
     data = DATA[level]['data']
-    if level == 'district' and state is not None:
+    if level == 'state':
+        state = None
+
+    if state is not None:
         data = data[data['state'] == state]
 
     if len(ids) == 1:
@@ -130,7 +133,10 @@ def update_indicator_graph(level, state, ids):
                Input('indicator-dropdown', 'value')])
 def update_correlations_graph(level, state, ids):
     data = DATA[level]['data']
-    if level == 'district' and state is not None:
+    if level == 'state':
+        state = None
+
+    if state is not None:
         data = data[data['state'] == state]
 
     if 'indicators' not in DATA[level]:
