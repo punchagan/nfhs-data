@@ -9,7 +9,7 @@ import dash_html_components as html
 import flask
 
 from figures import (
-    binary_correlation_scatter, correlation_scatter, single_scatter
+    correlation_scatter, single_scatter, scatter_compare
 )
 from utils import (
     compute_indicator_correlations, get_indicators, get_indicator_names,
@@ -116,7 +116,7 @@ def update_indicator_graph(level, state, ids):
 
     elif len(ids) >= 2:
         x, y = ids[:2]
-        figure = binary_correlation_scatter(data, x, y, level)
+        figure = scatter_compare(data, ids, level, state)
 
     else:
         figure = None

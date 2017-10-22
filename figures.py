@@ -32,7 +32,7 @@ def binary_correlation_scatter(data, indicator_x, indicator_y, level='state'):
         'data': [go.Scatter(d) for d in scatter_data],
         'layout': {
             'height': 800,
-            'width': 900,
+            'width': 1500,
             'hovermode': 'closest',
             'xaxis': {
                 'title': '{indicator_category} :: {indicator_name}'.format(**X.iloc[0]),
@@ -99,7 +99,51 @@ def single_scatter(data, indicator_id, level='state', state=None):
         'data': [go.Scatter(d) for d in scatter_data],
         'layout': {
             'height': 800,
-            'width': 900,
+            'width': 1500,
+            'hovermode': 'closest',
+            'xaxis': {
+                'title': 'State' if state is None else state.capitalize(),
+            },
+            'yaxis': {
+                'title': 'Value',
+            },
+        }
+    }
+    return figure
+
+
+def scatter_compare(data, indicators, level='state', state=None):
+    """Scatter plot showing comparison between one or more indicators."""
+    I = [
+        data[data['indicator_id'] == indicator_id]
+        for indicator_id in indicators
+    ]
+
+    def get_text(X):
+        text = (
+            X.apply(lambda x: '{state}-{indicator_name}'.format(**x), axis=1) if level == 'state' else
+            X.apply(lambda x: '{district}-{state}-{indicator_name}'.format(**x), axis=1)
+        )
+        return text
+
+    scatter_data = [
+        {
+            'x': indicator_data['state'] if state is None else indicator_data['district'],
+            'y': indicator_data[column],
+            'text': get_text(indicator_data),
+            'name': '{}-{}'.format(column.capitalize(), indicator_data.iloc[0]['indicator_name']),
+            'mode': 'markers+lines',
+            'marker': {'symbol': MARKERS[i % len(MARKERS)], 'size': 8},
+        }
+        for indicator_data in I
+        for i, column in enumerate(('rural', 'urban', 'total'))
+    ]
+
+    figure = {
+        'data': [go.Scatter(d) for d in scatter_data],
+        'layout': {
+            'height': 800,
+            'width': 1500,
             'hovermode': 'closest',
             'xaxis': {
                 'title': 'State' if state is None else state.capitalize(),
