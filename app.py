@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import os
+
 import dash
 from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
+import flask
 
 from figures import (
     binary_correlation_scatter, correlation_scatter, single_scatter
@@ -24,7 +27,10 @@ DATA = {
 TITLE = 'NFHS-4 EDA'
 LEVELS = ['state', 'district']
 
-app = dash.Dash()
+server = flask.Flask('app')
+server.secret_key = os.environ.get('secret_key', 'secret')
+
+app = dash.Dash(name=TITLE, server=server)
 app.title = TITLE
 
 app.layout = html.Div(children=[
