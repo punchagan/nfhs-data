@@ -41,6 +41,12 @@ app.layout = html.Div(children=[
         value=LEVELS[0],
     ),
     dcc.Dropdown(
+        id='state-dropdown',
+        placeholder='Select state',
+        options=[],
+        value=None,
+    ),
+    dcc.Dropdown(
         id='indicator-dropdown',
         options=[],
         value=[],
@@ -49,6 +55,12 @@ app.layout = html.Div(children=[
     dcc.Graph(id='nfhs-graph'),
     dcc.Graph(id='nfhs-correlations-graph'),
 ])
+
+
+@app.callback(Output('state-dropdown', 'disabled'),
+              [Input('level-dropdown', 'value')])
+def disable_state_selection(level):
+    return True if level == 'state' else False
 
 
 @app.callback(Output('indicator-dropdown', 'options'),
@@ -69,11 +81,29 @@ def update_indicator_options(level):
     return data['indicator_options']
 
 
+@app.callback(Output('state-dropdown', 'options'),
+              [Input('level-dropdown', 'value')])
+def update_state_options(level):
+    if level == 'state':
+        return []
+    else:
+        data = DATA[level]['data']
+        states = data['state'].unique()
+        return [
+            {'label': state, 'value': state}
+            for state in states
+        ]
+
+
 @app.callback(Output('nfhs-graph', 'figure'),
               [Input('level-dropdown', 'value'),
+               Input('state-dropdown', 'value'),
                Input('indicator-dropdown', 'value')])
-def update_indicator_graph(level, ids):
+def update_indicator_graph(level, state, ids):
     data = DATA[level]['data']
+    if level == 'district' and state is not None:
+        data = data[data['state'] == state]
+
     if len(ids) == 1:
         indicator_id = ids[0]
         figure = single_scatter(data, indicator_id, level)
@@ -90,9 +120,13 @@ def update_indicator_graph(level, ids):
 
 @app.callback(Output('nfhs-correlations-graph', 'figure'),
               [Input('level-dropdown', 'value'),
+               Input('state-dropdown', 'value'),
                Input('indicator-dropdown', 'value')])
-def update_correlations_graph(level, ids):
+def update_correlations_graph(level, state, ids):
     data = DATA[level]['data']
+    if level == 'district' and state is not None:
+        data = data[data['state'] == state]
+
     if 'indicators' not in DATA[level]:
         return None
 
