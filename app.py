@@ -112,7 +112,7 @@ def update_indicator_graph(level, state, ids):
 
     if len(ids) == 1:
         indicator_id = ids[0]
-        figure = single_scatter(data, indicator_id, level)
+        figure = single_scatter(data, indicator_id, level, state)
 
     elif len(ids) >= 2:
         x, y = ids[:2]

@@ -76,7 +76,7 @@ def correlation_scatter(data, indicator):
     return figure
 
 
-def single_scatter(data, indicator_id, level='state'):
+def single_scatter(data, indicator_id, level='state', state=None):
     """Scatter plot of a single indicator data."""
     indicator_data = data[data['indicator_id'] == indicator_id]
     text = (
@@ -85,7 +85,7 @@ def single_scatter(data, indicator_id, level='state'):
     )
     scatter_data = [
         {
-            'x': indicator_data['state'],
+            'x': indicator_data['state'] if state is None else indicator_data['district'],
             'y': indicator_data[column],
             'text': text,
             'name': column.capitalize(),
@@ -102,7 +102,7 @@ def single_scatter(data, indicator_id, level='state'):
             'width': 900,
             'hovermode': 'closest',
             'xaxis': {
-                'title': 'State',
+                'title': 'State' if state is None else state.capitalize(),
             },
             'yaxis': {
                 'title': 'Value',
